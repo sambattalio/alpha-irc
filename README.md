@@ -6,7 +6,7 @@ Making an irc client to learn Golang more
 Can loosely connect to freenode
 
 
-# TODO LIst
+# TODO List
 
 - [ ] Ping / pong
 - [ ] handle messaging
