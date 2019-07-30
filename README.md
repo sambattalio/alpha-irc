@@ -8,7 +8,7 @@ Can loosely connect to freenode
 
 # TODO LIst
 
-[] Ping / pong
-[] handle messaging
-[] / commands
-[] GUI (maybe tui)
+- [ ] Ping / pong
+- [ ] handle messaging
+- [ ] / commands
+- [ ] GUI (maybe tui)
