@@ -5,6 +5,7 @@ import (
 	"strings"
 	"errors"
 	"net"
+	"os"
 	"bufio"
 )
 
@@ -37,12 +38,27 @@ func Connect(c *Client, u *User) error {
 
 	fmt.Println("Creating readmessage goroutine")
 	go readLoop(c)
+	go getStdin(c)
 
 	fmt.Fprintf(c.conn, "NICK %v\r\n", u.Nick)
 	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", u.User, u.Name)
 
 
 	return nil
+}
+
+func getStdin(c *Client) {
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		msg, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println(err)
+			break
+		}
+
+		fmt.Fprintf(c.conn, "%v\r\n", msg)
+	}
 }
 
 func readLoop(c *Client) {
