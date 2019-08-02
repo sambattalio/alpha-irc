@@ -16,3 +16,6 @@ Can connect to freenode and send IRC messages using protocol spec
   - [ ] clean up input
 - [ ] / commands
 - [ ] GUI (maybe tui)
+  - [X] Add basic setup for input message
+  - [ ] Get better structure with channel list and members
+- [ ] Get a good repo structure in place
