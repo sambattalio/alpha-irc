@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"bufio"
+	"github.com/awesome-gocui/gocui"
 )
 
 type User struct {
@@ -15,6 +16,7 @@ type User struct {
 
 type Client struct {
 	conn net.Conn
+	Gui  *gocui.Gui
 }
 
 type Message struct {
@@ -24,7 +26,7 @@ type Message struct {
 	Parameters []string
 }
 
-func Connect(c *Client, u *User) error {
+func (c *Client) Connect(u *User) error {
 	fmt.Printf("Creating connection to %v\n", u.Server)
 
 	conn, err := net.Dial("tcp", u.Server)
@@ -37,8 +39,8 @@ func Connect(c *Client, u *User) error {
 	fmt.Println("Successfully connected!")
 
 	fmt.Println("Creating readmessage goroutine")
-	go readLoop(c)
-	go getStdin(c)
+	go c.readLoop()
+	// go getStdin(c)
 
 	fmt.Fprintf(c.conn, "NICK %v\r\n", u.Nick)
 	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", u.User, u.Name)
@@ -47,7 +49,14 @@ func Connect(c *Client, u *User) error {
 	return nil
 }
 
-func getStdin(c *Client) {
+func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
+	fmt.Fprintf(c.conn, "%v\r\n", v.ViewBuffer())
+	v.Clear()
+	err := v.SetCursor(0,0)
+	return err
+}
+
+func (c *Client) getStdin() {
 	reader := bufio.NewReader(os.Stdin)
 
 	for {
@@ -61,7 +70,7 @@ func getStdin(c *Client) {
 	}
 }
 
-func readLoop(c *Client) {
+func (c *Client) readLoop() {
 	reader := bufio.NewReader(c.conn)
 
 	// loop while connected
@@ -77,13 +86,24 @@ func readLoop(c *Client) {
 			fmt.Println(err)
 			break
 		}
-
+		/*
 		fmt.Printf("Tags: %q\n", parsed.Tags)
 		fmt.Printf("Source: %v\n", parsed.Source)
 		fmt.Printf("command: %v\n", parsed.Command)
 		fmt.Printf("params: %q\n", parsed.Parameters)
 
 		fmt.Println("Handling command")
+		*/
+
+		c.Gui.Update(func(g *gocui.Gui) error {
+			v, err := g.View("stream")
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintln(v, msg)
+			return nil
+		})
 
 		if (parsed.Command == "PING") {
 			fmt.Println("Sending pong")

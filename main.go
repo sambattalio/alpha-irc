@@ -3,10 +3,19 @@ package main
 import (
 	"fmt"
 	"github.com/sambattalio/alpha-irc/client"
+	"github.com/awesome-gocui/gocui"
 )
 
 func main() {
-	c := &client.Client{}
+	g, err := gocui.NewGui(gocui.OutputNormal, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer g.Close()
+
+	c := &client.Client{
+		Gui: g,
+	}
 
 	u := &client.User{
 		Server: "chat.freenode.net:6667",
@@ -15,10 +24,53 @@ func main() {
 		Name: "sbattali",
 	}
 
-	if client.Connect(c, u) != nil {
+	if c.Connect(u) != nil {
 		fmt.Println("Error initializing client")
 	}
-	for {
 
+	g.Cursor = true
+	g.SetManagerFunc(layout)
+
+	if err := g.SetKeybinding("input", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+		fmt.Println(err)
 	}
+
+	if err := g.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, c.GetInput); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := g.MainLoop(); err != nil && !gocui.IsQuit(err) {
+		fmt.Println(err)
+	}
+	fmt.Println("quitting")
+}
+
+func quit(g *gocui.Gui, v *gocui.View) error {
+	return gocui.ErrQuit
+}
+
+func layout(g *gocui.Gui) error {
+        maxX, maxY := g.Size()
+        if v, err := g.SetView("stream", 0, 0, maxX - 1, 9 * maxY / 10, 0); err != nil {
+                if !gocui.IsUnknownView(err) {
+                        return err
+                }
+
+                v.Wrap = true
+                v.Autoscroll = true
+
+        }
+
+	if v, err := g.SetView("input", 0, 9 * maxY / 10 + 1, maxX - 1, maxY - 1, 0); err != nil {
+		if !gocui.IsUnknownView(err) {
+                        return err
+                }
+		v.Wrap = true
+		v.Editable = true
+		if _, err := g.SetCurrentView("input"); err != nil {
+                        return err
+                }
+	}
+
+        return nil
 }
