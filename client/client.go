@@ -50,9 +50,22 @@ func (c *Client) Connect(u *User) error {
 }
 
 func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
-	fmt.Fprintf(c.conn, "%v\r\n", v.ViewBuffer())
+	input := v.ViewBuffer()
+
+	parsed, err := parseMessage(input);
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	if handler, ok := slashCommandList[parsed.Command]; ok {
+		handler(c, parsed)
+	} else {
+		fmt.Fprintf(c.conn, "%v\r\n", input)
+	}
+
 	v.Clear()
-	err := v.SetCursor(0,0)
+	err = v.SetCursor(0,0)
 	return err
 }
 
@@ -66,7 +79,7 @@ func (c *Client) getStdin() {
 			break
 		}
 
-		fmt.Fprintf(c.conn, "%v\r\n", msg)
+		fmt.Fprintf(c.conn, "%v\r\n", msg[1:])
 	}
 }
 
@@ -86,30 +99,12 @@ func (c *Client) readLoop() {
 			fmt.Println(err)
 			break
 		}
-		/*
-		fmt.Printf("Tags: %q\n", parsed.Tags)
-		fmt.Printf("Source: %v\n", parsed.Source)
-		fmt.Printf("command: %v\n", parsed.Command)
-		fmt.Printf("params: %q\n", parsed.Parameters)
 
-		fmt.Println("Handling command")
-		*/
+		writeToScreen(c, parsed)
 
-		c.Gui.Update(func(g *gocui.Gui) error {
-			v, err := g.View("stream")
-			if err != nil {
-				return err
-			}
-
-			fmt.Fprintln(v, msg)
-			return nil
-		})
-
-		if (parsed.Command == "PING") {
-			fmt.Println("Sending pong")
-			fmt.Fprintf(c.conn, "PONG %v\r\n", parsed.Parameters[0])
+		if handler, ok := systemCommandList[parsed.Command]; ok {
+			handler(c, parsed)
 		}
-
 	}
 }
 
@@ -156,7 +151,21 @@ func parseTags(s string) ([]string, error) {
 	return make([]string, 0), nil
 }
 
-func handle_msg(c *Client, msg string) error {
+func handleMsg(c *Client, msg string) error {
 	fmt.Println(strings.Fields(msg))
 	return nil
+}
+
+func writeToScreen(c *Client, msg *Message) {
+	c.Gui.Update(func(g *gocui.Gui) error {
+		v, err := g.View("stream")
+		if err != nil {
+			return err
+		}
+		// test output for now. will probably have
+		// commands file/handler
+		fmt.Fprintln(v, msg.Source + ":" +
+			     strings.Join(msg.Parameters[1:], " "))
+		return nil
+	})
 }
