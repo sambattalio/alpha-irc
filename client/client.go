@@ -5,7 +5,6 @@ import (
 	"strings"
 	"errors"
 	"net"
-	"os"
 	"bufio"
 	"github.com/awesome-gocui/gocui"
 )
@@ -16,6 +15,8 @@ type User struct {
 
 type Client struct {
 	conn net.Conn
+	user User
+	channel string
 	Gui  *gocui.Gui
 }
 
@@ -36,15 +37,10 @@ func (c *Client) Connect(u *User) error {
 	}
 	c.conn = conn
 
-	fmt.Println("Successfully connected!")
-
-	fmt.Println("Creating readmessage goroutine")
 	go c.readLoop()
-	// go getStdin(c)
 
 	fmt.Fprintf(c.conn, "NICK %v\r\n", u.Nick)
 	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", u.User, u.Name)
-
 
 	return nil
 }
@@ -69,18 +65,9 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 	return err
 }
 
-func (c *Client) getStdin() {
-	reader := bufio.NewReader(os.Stdin)
-
-	for {
-		msg, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println(err)
-			break
-		}
-
-		fmt.Fprintf(c.conn, "%v\r\n", msg[1:])
-	}
+func (c *Client) setChannel(name string) {
+	writeToScreen(c, name, "channels")
+	c.channel = name
 }
 
 func (c *Client) readLoop() {
@@ -100,7 +87,7 @@ func (c *Client) readLoop() {
 			break
 		}
 
-		writeToScreen(c, parsed)
+		writeToScreen(c, strings.Join(parsed.Parameters, " "), "stream")
 
 		if handler, ok := systemCommandList[parsed.Command]; ok {
 			handler(c, parsed)
@@ -156,16 +143,15 @@ func handleMsg(c *Client, msg string) error {
 	return nil
 }
 
-func writeToScreen(c *Client, msg *Message) {
+func writeToScreen(c *Client, msg string, view string) {
 	c.Gui.Update(func(g *gocui.Gui) error {
-		v, err := g.View("stream")
+		v, err := g.View(view)
 		if err != nil {
 			return err
 		}
-		// test output for now. will probably have
-		// commands file/handler
-		fmt.Fprintln(v, msg.Source + ":" +
-			     strings.Join(msg.Parameters[1:], " "))
+		fmt.Fprintln(v, msg)
+		//fmt.Fprintln(v, msg.Source + ":" +
+		//	     strings.Join(msg.Parameters[1:], " "))
 		return nil
 	})
 }

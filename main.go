@@ -31,7 +31,11 @@ func main() {
 	g.Cursor = true
 	g.SetManagerFunc(layout)
 
-	if err := g.SetKeybinding("input", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := g.SetKeybinding("", gocui.KeyTab, gocui.ModNone, switchView); err != nil {
 		fmt.Println(err)
 	}
 
@@ -45,13 +49,17 @@ func main() {
 	fmt.Println("quitting")
 }
 
+func switchView(g *gocui.Gui, v *gocui.View) error {
+	return nil
+}
+
 func quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
 func layout(g *gocui.Gui) error {
         maxX, maxY := g.Size()
-        if v, err := g.SetView("stream", 0, 0, maxX - 1, 9 * maxY / 10, 0); err != nil {
+        if v, err := g.SetView("stream", maxX / 6 + 1, 0, maxX - 1, maxY - 4, 0); err != nil {
                 if !gocui.IsUnknownView(err) {
                         return err
                 }
@@ -61,7 +69,23 @@ func layout(g *gocui.Gui) error {
 
         }
 
-	if v, err := g.SetView("input", 0, 9 * maxY / 10 + 1, maxX - 1, maxY - 1, 0); err != nil {
+	if v, err := g.SetView("channels", 0, 0, maxX / 6, (maxY - 4) / 2, 0); err != nil {
+		if !gocui.IsUnknownView(err) {
+                        return err
+                }
+
+                v.Wrap = true
+	}
+
+	if v, err := g.SetView("users", 0, (maxY - 4) / 2, maxX / 6, maxY - 4, 0); err != nil {
+		if !gocui.IsUnknownView(err) {
+                        return err
+                }
+
+                v.Wrap = true
+	}
+
+	if v, err := g.SetView("input", 0, maxY - 3, maxX - 1, maxY - 1, 0); err != nil {
 		if !gocui.IsUnknownView(err) {
                         return err
                 }
