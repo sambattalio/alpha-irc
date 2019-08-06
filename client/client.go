@@ -64,6 +64,7 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 	if handler, ok := slashCommandList[parsed.Command]; ok {
 		handler(c, parsed)
 	} else {
+		writeToScreen(c, input, c.channel)
 		fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", c.channel, input)
 	}
 

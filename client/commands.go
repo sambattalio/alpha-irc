@@ -50,6 +50,7 @@ func handlePRIVMSG(c *Client, msg *Message) {
 var slashCommandList = map[string]command{
 	"/join": handleJoin,
 	"/nick": handleSendNick,
+	"/msg": handleMSG,
 }
 
 func handleJoin(c *Client, msg *Message) {
@@ -59,4 +60,12 @@ func handleJoin(c *Client, msg *Message) {
 
 func handleSendNick(c *Client, msg *Message) {
 	fmt.Fprintf(c.conn, "NICK %v\r\n", msg.Parameters[0])
+}
+
+func handleMSG(c *Client, msg *Message) {
+	if (len(msg.Parameters) < 2) {
+		return
+	}
+	fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", msg.Parameters[0], strings.Join(msg.Parameters[1:], " "))
+	c.setChannel(msg.Parameters[0])
 }
