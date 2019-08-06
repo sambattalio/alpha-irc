@@ -34,6 +34,7 @@ func NewClient(u User, gui *gocui.Gui) Client {
 		user: u,
 		channel: "stream",
 		Gui: gui,
+		channels: make(map[string]bool),
 	}
 }
 
@@ -61,10 +62,12 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 		return err
 	}
 
+	parsed.Source = c.user.Nick
+
 	if handler, ok := slashCommandList[parsed.Command]; ok {
 		handler(c, parsed)
 	} else {
-		writeToScreen(c, input, c.channel)
+		writeInputToScreen(c, input, c.channel)
 		fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", c.channel, input)
 	}
 
@@ -74,21 +77,60 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 }
 
 func (c *Client) setChannel(name string) error {
-	// Check if PRIVMSG view exists
-	if _, ok := c.channels[name]; !ok {
-		maxX, maxY := c.Gui.Size()
-		if v, err := c.Gui.SetView(name, maxX / 6 + 1, 0, maxX - 1, maxY - 4, 0); err != nil {
-			if !gocui.IsUnknownView(err) {
-				return err
-			}
-
-			v.Wrap = true
-			v.Autoscroll = true
-		}
+	var err error = nil
+	if !c.isChannel(name) {
+		err = c.addChannel(name)
 	}
-
 	c.channel = name
+
+	return err
+}
+
+func (c *Client) SetChannelView(_ *gocui.Gui, v *gocui.View) error {
+	var channel string
+        var err error
+        _, cy := v.Cursor()
+        if channel, err = v.Line(cy); err != nil {
+                channel = "stream"
+        }
+	c.setChannel(channel)
+        c.Gui.SetCurrentView("input")
+        c.Gui.SetViewOnTop(channel)
+        return nil
+}
+
+func (c *Client) isChannel(name string) bool {
+	_, ok := c.channels[name]
+	return ok
+}
+
+func (c *Client) addChannel(name string) error {
+	maxX, maxY := c.Gui.Size()
+	if v, err := c.Gui.SetView(name, maxX / 6 + 1, 0, maxX - 1, maxY - 4, 0); err != nil {
+		if !gocui.IsUnknownView(err) {
+			return err
+		}
+
+		v.Wrap = true
+		v.Autoscroll = true
+	}
+	c.channels[name] = true
+	c.updateChannelsList()
 	return nil
+}
+
+func (c *Client) updateChannelsList() {
+	c.Gui.Update(func(g *gocui.Gui) error {
+		v, err := g.View("channels")
+		v.Clear()
+		if err != nil {
+			return err
+		}
+		for channel, _ := range c.channels {
+			fmt.Fprintf(v, "%v\n", channel)
+		}
+		return nil
+	})
 }
 
 func (c *Client) readLoop() {
@@ -106,8 +148,6 @@ func (c *Client) readLoop() {
 			fmt.Println(err)
 			break
 		}
-
-		writeToScreen(c, strings.Join(parsed.Parameters[1:], " "), c.channel)
 
 		if handler, ok := systemCommandList[parsed.Command]; ok {
 			handler(c, parsed)
@@ -134,7 +174,8 @@ func parseMessage(msg string) (*Message, error) {
 	}
 
 	if (strings.HasPrefix(split[0], ":")) {
-		parsed.Source = split[0][1:]
+		parsed.Source = strings.Split(split[0][1:], "!")[0]
+		//parsed.Source = split[0][1:]
 		split = split[1:]
 	}
 
@@ -163,13 +204,39 @@ func handleMsg(c *Client, msg string) error {
 	return nil
 }
 
-func writeToScreen(c *Client, msg string, view string) {
+func writeToView(c *Client, msg *Message) error{
+	var view string
+	if msg.Parameters[0] == c.user.Nick {
+		view = msg.Source
+	} else {
+		view = msg.Parameters[0]
+	}
+	if !c.isChannel(view) {
+		err := c.addChannel(view)
+		if err != nil {
+			return err
+		}
+	}
 	c.Gui.Update(func(g *gocui.Gui) error {
 		v, err := g.View(view)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(v, msg)
+		//fmt.Fprintf(v, "%v %v %v %v\n", msg.Tags, msg.Source, msg.Command, msg.Parameters)
+		fmt.Fprintf(v, "<%v> %v\n", msg.Source, strings.Join(msg.Parameters[1:], " "))
+		return nil
+	})
+
+	return nil
+}
+
+func writeInputToScreen(c *Client, msg string, view string) {
+	c.Gui.Update(func(g *gocui.Gui) error {
+		v, err := g.View(view)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(v, "<%v> %v\n", c.user.Nick, msg)
 		return nil
 	})
 }

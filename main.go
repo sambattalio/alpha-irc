@@ -37,8 +37,20 @@ func main() {
 		fmt.Println(err)
 	}
 
+	if err := g.SetKeybinding("channels", gocui.KeyEnter, gocui.ModNone, c.SetChannelView); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := g.SetKeybinding("channels", gocui.KeyArrowDown, gocui.ModNone, cursorDown); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := g.SetKeybinding("channels", gocui.KeyArrowUp, gocui.ModNone, cursorUp); err != nil {
+		fmt.Println(err)
+	}
+
 	if err := g.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, c.GetInput); err != nil {
-	fmt.Println(err)
+		fmt.Println(err)
 	}
 
 	if err := g.MainLoop(); err != nil && !gocui.IsQuit(err) {
@@ -47,7 +59,32 @@ func main() {
 	fmt.Println("quitting")
 }
 
+func cursorDown(g *gocui.Gui, v *gocui.View) error {
+	cx, cy := v.Cursor()
+
+	if channel, _ := v.Line(cy + 1); channel == "" {
+		return nil
+	}
+
+	if err := v.SetCursor(cx, cy + 1); err != nil {
+		return err
+	}
+	return nil
+}
+
+func cursorUp(g *gocui.Gui, v *gocui.View) error {
+	cx, cy := v.Cursor();
+	if cy == 0 {
+		return nil
+	}
+	if err := v.SetCursor(cx, cy - 1); err != nil {
+		return err
+	}
+	return nil
+}
+
 func switchView(g *gocui.Gui, v *gocui.View) error {
+	g.SetCurrentView("channels")
 	return nil
 }
 

@@ -42,7 +42,7 @@ func handleConnectedNames(c *Client, msg *Message) {
 }
 
 func handlePRIVMSG(c *Client, msg *Message) {
-
+	writeToView(c, msg)
 }
 
 // Outgoing commands
@@ -66,6 +66,6 @@ func handleMSG(c *Client, msg *Message) {
 	if (len(msg.Parameters) < 2) {
 		return
 	}
-	fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", msg.Parameters[0], strings.Join(msg.Parameters[1:], " "))
 	c.setChannel(msg.Parameters[0])
+	fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", msg.Parameters[0], strings.Join(msg.Parameters[1:], " "))
 }
