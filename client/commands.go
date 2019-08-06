@@ -14,6 +14,7 @@ var systemCommandList = map[string]command{
 	"PING": handlePing,
 	"NICK": handleNickChange,
 	"353": handleConnectedNames,
+	"PRIVMSG": handlePRIVMSG,
 }
 
 func handlePing(c *Client, msg *Message) {
@@ -38,6 +39,10 @@ func handleConnectedNames(c *Client, msg *Message) {
 		}
 		return nil
 	})
+}
+
+func handlePRIVMSG(c *Client, msg *Message) {
+
 }
 
 // Outgoing commands

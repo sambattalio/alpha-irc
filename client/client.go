@@ -18,6 +18,8 @@ type Client struct {
 	user User
 	channel string
 	Gui  *gocui.Gui
+
+	channels map[string]bool
 }
 
 type Message struct {
@@ -27,20 +29,25 @@ type Message struct {
 	Parameters []string
 }
 
-func (c *Client) Connect(u *User) error {
-	fmt.Printf("Creating connection to %v\n", u.Server)
+func NewClient(u User, gui *gocui.Gui) Client {
+	return Client{
+		user: u,
+		channel: "stream",
+		Gui: gui,
+	}
+}
 
-	conn, err := net.Dial("tcp", u.Server)
+func (c *Client) Connect() error {
+	conn, err := net.Dial("tcp", c.user.Server)
 	if err != nil {
-		fmt.Println("Error dialing connection")
 		return err
 	}
 	c.conn = conn
 
 	go c.readLoop()
 
-	fmt.Fprintf(c.conn, "NICK %v\r\n", u.Nick)
-	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", u.User, u.Name)
+	fmt.Fprintf(c.conn, "NICK %v\r\n", c.user.Nick)
+	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", c.user.User, c.user.Name)
 
 	return nil
 }
@@ -57,7 +64,7 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 	if handler, ok := slashCommandList[parsed.Command]; ok {
 		handler(c, parsed)
 	} else {
-		fmt.Fprintf(c.conn, "%v\r\n", input)
+		fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", c.channel, input)
 	}
 
 	v.Clear()
@@ -65,15 +72,27 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 	return err
 }
 
-func (c *Client) setChannel(name string) {
-	writeToScreen(c, name, "channels")
+func (c *Client) setChannel(name string) error {
+	// Check if PRIVMSG view exists
+	if _, ok := c.channels[name]; !ok {
+		maxX, maxY := c.Gui.Size()
+		if v, err := c.Gui.SetView(name, maxX / 6 + 1, 0, maxX - 1, maxY - 4, 0); err != nil {
+			if !gocui.IsUnknownView(err) {
+				return err
+			}
+
+			v.Wrap = true
+			v.Autoscroll = true
+		}
+	}
+
 	c.channel = name
+	return nil
 }
 
 func (c *Client) readLoop() {
 	reader := bufio.NewReader(c.conn)
 
-	// loop while connected
 	for {
 		msg, err := reader.ReadString('\n')
 		if err != nil {
@@ -87,7 +106,7 @@ func (c *Client) readLoop() {
 			break
 		}
 
-		writeToScreen(c, strings.Join(parsed.Parameters, " "), "stream")
+		writeToScreen(c, strings.Join(parsed.Parameters[1:], " "), c.channel)
 
 		if handler, ok := systemCommandList[parsed.Command]; ok {
 			handler(c, parsed)
@@ -150,8 +169,6 @@ func writeToScreen(c *Client, msg string, view string) {
 			return err
 		}
 		fmt.Fprintln(v, msg)
-		//fmt.Fprintln(v, msg.Source + ":" +
-		//	     strings.Join(msg.Parameters[1:], " "))
 		return nil
 	})
 }

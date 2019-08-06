@@ -13,18 +13,16 @@ func main() {
 	}
 	defer g.Close()
 
-	c := &client.Client{
-		Gui: g,
-	}
-
-	u := &client.User{
+	u := client.User{
 		Server: "chat.freenode.net:6667",
 		Nick: "student069client",
 		User: "student069",
 		Name: "sbattali",
 	}
 
-	if c.Connect(u) != nil {
+	c := client.NewClient(u, g)
+
+	if c.Connect() != nil {
 		fmt.Println("Error initializing client")
 	}
 
@@ -40,7 +38,7 @@ func main() {
 	}
 
 	if err := g.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, c.GetInput); err != nil {
-		fmt.Println(err)
+	fmt.Println(err)
 	}
 
 	if err := g.MainLoop(); err != nil && !gocui.IsQuit(err) {
