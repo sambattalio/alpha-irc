@@ -17,7 +17,7 @@ type Client struct {
 	conn net.Conn
 	user User
 	channel string
-	Gui  *gocui.Gui
+	gui  *gocui.Gui
 
 	channels map[string]bool
 }
@@ -29,12 +29,21 @@ type Message struct {
 	Parameters []string
 }
 
-func NewClient(u User, gui *gocui.Gui) Client {
-	return Client{
+func NewClient(u User) *Client {
+	g, err := gocui.NewGui(gocui.OutputNormal, true)
+	if err != nil {
+		fmt.Println(err)
+	}
+	g.Cursor = true
+
+	c := Client{
 		user: u,
-		Gui: gui,
+		gui: g,
 		channels: make(map[string]bool),
 	}
+	g.SetManager(&c)
+	c.setKeybindings()
+	return &c
 }
 
 func (c *Client) Connect() error {
@@ -48,6 +57,7 @@ func (c *Client) Connect() error {
 
 	fmt.Fprintf(c.conn, "NICK %v\r\n", c.user.Nick)
 	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", c.user.User, c.user.Name)
+	c.startGui()
 	return nil
 }
 
@@ -80,20 +90,24 @@ func (c *Client) setChannel(name string) error {
 		err = c.addChannel(name)
 	}
 	c.channel = name
-
+	c.gui.SetViewOnTop(name)
+	if err = c.resetUsersTab(); err != nil {
+		return err
+	}
+	c.reloadUsers()
 	return err
 }
 
-func (c *Client) SetChannelView(_ *gocui.Gui, v *gocui.View) error {
+func (c *Client) setChannelView(_ *gocui.Gui, v *gocui.View) error {
 	var channel string
         var err error
         _, cy := v.Cursor()
         if channel, err = v.Line(cy); err != nil {
 		return err
         }
-	c.setChannel(channel)
-	c.Gui.SetCurrentView("input")
-        c.Gui.SetViewOnTop(channel)
+	c.channel = channel
+	c.gui.SetCurrentView("input")
+        c.gui.SetViewOnTop(channel)
 	if err = c.resetUsersTab(); err != nil {
 		return err
 	}
@@ -107,7 +121,7 @@ func (c *Client) reloadUsers() {
 
 func (c *Client) resetUsersTab() error {
 	// reset users view
-	v, err := c.Gui.View("users")
+	v, err := c.gui.View("users")
 	if err != nil {
 		return err
 	}
@@ -121,8 +135,8 @@ func (c *Client) isChannel(name string) bool {
 }
 
 func (c *Client) addChannel(name string) error {
-	maxX, maxY := c.Gui.Size()
-	if v, err := c.Gui.SetView(name, maxX / 6 + 1, 0, maxX - 1, maxY - 4, 0); err != nil {
+	maxX, maxY := c.gui.Size()
+	if v, err := c.gui.SetView(name, maxX / 6 + 1, 0, maxX - 1, maxY - 4, 0); err != nil {
 		if !gocui.IsUnknownView(err) {
 			return err
 		}
@@ -130,14 +144,14 @@ func (c *Client) addChannel(name string) error {
 		v.Wrap = true
 		v.Autoscroll = true
 	}
-	c.Gui.SetViewOnBottom(name)
+	c.gui.SetViewOnBottom(name)
 	c.channels[name] = true
 	c.updateChannelsList()
 	return nil
 }
 
 func (c *Client) updateChannelsList() {
-	c.Gui.Update(func(g *gocui.Gui) error {
+	c.gui.Update(func(g *gocui.Gui) error {
 		v, err := g.View("channels")
 		v.Clear()
 		if err != nil {
@@ -234,7 +248,7 @@ func writeToView(c *Client, msg *Message) error{
 			return err
 		}
 	}
-	c.Gui.Update(func(g *gocui.Gui) error {
+	c.gui.Update(func(g *gocui.Gui) error {
 		v, err := g.View(view)
 		if err != nil {
 			return err
@@ -248,7 +262,7 @@ func writeToView(c *Client, msg *Message) error{
 }
 
 func (c *Client) writeInputToScreen(msg string) {
-	c.Gui.Update(func(g *gocui.Gui) error {
+	c.gui.Update(func(g *gocui.Gui) error {
 		v, err := g.View(c.channel)
 		if err != nil {
 			return err

@@ -29,7 +29,7 @@ func handleNickChange(c *Client, msg *Message) {
 
 func handleConnectedNames(c *Client, msg *Message) {
 	// hacky need to fix
-	c.Gui.Update(func(g *gocui.Gui) error {
+	c.gui.Update(func(g *gocui.Gui) error {
 		v, err := g.View("users")
 		if err != nil {
 			return err
