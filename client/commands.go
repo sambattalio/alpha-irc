@@ -14,6 +14,7 @@ var systemCommandList = map[string]command{
 	"PING": handlePing,
 	"NICK": handleNickChange,
 	"353": handleConnectedNames,
+	"372": handleMOTD,
 	"PRIVMSG": handlePRIVMSG,
 }
 
@@ -39,6 +40,10 @@ func handleConnectedNames(c *Client, msg *Message) {
 		}
 		return nil
 	})
+}
+
+func handleMOTD(c *Client, msg *Message) {
+	writeToView(c, msg)
 }
 
 func handlePRIVMSG(c *Client, msg *Message) {

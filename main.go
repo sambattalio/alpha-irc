@@ -27,7 +27,7 @@ func main() {
 	}
 
 	g.Cursor = true
-	g.SetManagerFunc(layout)
+	g.SetManager(&c)
 
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		fmt.Println(err)

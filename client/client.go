@@ -32,7 +32,6 @@ type Message struct {
 func NewClient(u User, gui *gocui.Gui) Client {
 	return Client{
 		user: u,
-		channel: "stream",
 		Gui: gui,
 		channels: make(map[string]bool),
 	}
@@ -49,7 +48,6 @@ func (c *Client) Connect() error {
 
 	fmt.Fprintf(c.conn, "NICK %v\r\n", c.user.Nick)
 	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", c.user.User, c.user.Name)
-
 	return nil
 }
 
@@ -91,7 +89,7 @@ func (c *Client) SetChannelView(_ *gocui.Gui, v *gocui.View) error {
         var err error
         _, cy := v.Cursor()
         if channel, err = v.Line(cy); err != nil {
-                channel = "stream"
+		return err
         }
 	c.setChannel(channel)
 	c.Gui.SetCurrentView("input")
@@ -132,6 +130,7 @@ func (c *Client) addChannel(name string) error {
 		v.Wrap = true
 		v.Autoscroll = true
 	}
+	c.Gui.SetViewOnBottom(name)
 	c.channels[name] = true
 	c.updateChannelsList()
 	return nil
