@@ -12,10 +12,18 @@ Can connect to freenode and send IRC messages using protocol spec
 - [ ] handle messaging
   - [X] Recieve messages
   - [X] Send "raw" irc messages (PRIVMSG nick :message)
-  - [ ] join channel and talk there
-  - [ ] clean up input
+  - [x] join channel and talk there
+  - [x] clean up input
+- [ ] Channels
+  - [ ] leave channel
+  - [ ] channel motd
 - [ ] / commands
+  - [x] /join
+  - [x] /msg
+  - [ ] /nick
+  - [ ] /query
 - [ ] GUI (maybe tui)
   - [X] Add basic setup for input message
-  - [ ] Get better structure with channel list and members
+  - [X] Get better structure with channel list and members
+  - [ ] clean up
 - [ ] Get a good repo structure in place
