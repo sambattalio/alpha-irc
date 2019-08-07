@@ -68,4 +68,5 @@ func handleMSG(c *Client, msg *Message) {
 	}
 	c.setChannel(msg.Parameters[0])
 	fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", msg.Parameters[0], strings.Join(msg.Parameters[1:], " "))
+	c.writeInputToScreen(strings.Join(msg.Parameters[1:], " "))
 }

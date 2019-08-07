@@ -67,7 +67,7 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 	if handler, ok := slashCommandList[parsed.Command]; ok {
 		handler(c, parsed)
 	} else {
-		writeInputToScreen(c, input, c.channel)
+		c.writeInputToScreen(input)
 		fmt.Fprintf(c.conn, "PRIVMSG %v :%v\r\n", c.channel, input)
 	}
 
@@ -94,9 +94,27 @@ func (c *Client) SetChannelView(_ *gocui.Gui, v *gocui.View) error {
                 channel = "stream"
         }
 	c.setChannel(channel)
-        c.Gui.SetCurrentView("input")
+	c.Gui.SetCurrentView("input")
         c.Gui.SetViewOnTop(channel)
+	if err = c.resetUsersTab(); err != nil {
+		return err
+	}
+	c.reloadUsers()
         return nil
+}
+
+func (c *Client) reloadUsers() {
+	fmt.Fprintf(c.conn, "NAMES %v\r\n", c.channel)
+}
+
+func (c *Client) resetUsersTab() error {
+	// reset users view
+	v, err := c.Gui.View("users")
+	if err != nil {
+		return err
+	}
+	v.Clear()
+	return nil
 }
 
 func (c *Client) isChannel(name string) bool {
@@ -230,9 +248,9 @@ func writeToView(c *Client, msg *Message) error{
 	return nil
 }
 
-func writeInputToScreen(c *Client, msg string, view string) {
+func (c *Client) writeInputToScreen(msg string) {
 	c.Gui.Update(func(g *gocui.Gui) error {
-		v, err := g.View(view)
+		v, err := g.View(c.channel)
 		if err != nil {
 			return err
 		}
