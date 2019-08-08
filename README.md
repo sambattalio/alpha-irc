@@ -20,6 +20,7 @@ Keys
   - [X] Send "raw" irc messages (PRIVMSG nick :message)
   - [x] join channel and talk there
   - [x] clean up input
+  - [ ] use regex instead of .Fields
 - [ ] Channels
   - [ ] leave channel
   - [ ] channel motd
