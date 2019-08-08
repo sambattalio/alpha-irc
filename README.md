@@ -6,6 +6,12 @@ Making an irc client to learn Golang more
 Can connect to freenode and send IRC messages using protocol spec
 
 
+Keys
+
+- `Tab` to switch view to channel list
+- `Backspace` to delete channel
+- `Enter` to join channel
+
 # TODO List
 
 - [X] Ping / pong
@@ -20,7 +26,7 @@ Can connect to freenode and send IRC messages using protocol spec
 - [ ] / commands
   - [x] /join
   - [x] /msg
-  - [ ] /nick
+  - [x] /nick (sorta)
   - [ ] /query
 - [ ] GUI (maybe tui)
   - [X] Add basic setup for input message
