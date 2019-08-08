@@ -16,11 +16,13 @@ type User struct {
 type Client struct {
 	conn net.Conn
 	user User
-	channel string
 	gui  *gocui.Gui
 
+	channel string
 	channels map[string]bool
 }
+
+
 
 type Message struct {
 	Tags       []string
@@ -66,8 +68,8 @@ func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 
 	parsed, err := parseMessage(input);
 	if err != nil {
-		fmt.Println(err)
-		return err
+		// just return nil if garbage input
+		return nil
 	}
 
 	parsed.Source = c.user.Nick
@@ -98,13 +100,34 @@ func (c *Client) setChannel(name string) error {
 	return err
 }
 
+func (c *Client) deleteChannel(_ *gocui.Gui, v *gocui.View) error {
+	channel, err := lineOfText(v);
+	if err != nil {
+		return err
+	}
+
+	c.channels[channel] = false
+	err = c.gui.DeleteView(channel)
+	if err != nil {
+		return err
+	}
+	c.updateChannelsList()
+
+	channelsList, err := c.gui.View("channels")
+	if err != nil {
+		return err
+	}
+	c.setChannelView(nil, channelsList)
+
+	return nil
+}
+
 func (c *Client) setChannelView(_ *gocui.Gui, v *gocui.View) error {
 	var channel string
         var err error
-        _, cy := v.Cursor()
-        if channel, err = v.Line(cy); err != nil {
+	if channel, err = lineOfText(v); err != nil {
 		return err
-        }
+	}
 	c.channel = channel
 	c.gui.SetCurrentView("input")
         c.gui.SetViewOnTop(channel)
@@ -113,6 +136,12 @@ func (c *Client) setChannelView(_ *gocui.Gui, v *gocui.View) error {
 	}
 	c.reloadUsers()
         return nil
+}
+
+func lineOfText(v *gocui.View) (string, error) {
+	_, cy := v.Cursor()
+	line, err := v.Line(cy)
+	return line, err
 }
 
 func (c *Client) reloadUsers() {
@@ -146,8 +175,19 @@ func (c *Client) addChannel(name string) error {
 	}
 	c.gui.SetViewOnBottom(name)
 	c.channels[name] = true
-	c.updateChannelsList()
+	c.appendChannelsList(name)
 	return nil
+}
+
+func (c *Client) appendChannelsList(channel string) {
+	c.gui.Update(func(g *gocui.Gui) error {
+		v, err := g.View("channels")
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(v, "%v\n", channel)
+		return nil
+	})
 }
 
 func (c *Client) updateChannelsList() {
@@ -157,8 +197,10 @@ func (c *Client) updateChannelsList() {
 		if err != nil {
 			return err
 		}
-		for channel, _ := range c.channels {
-			fmt.Fprintf(v, "%v\n", channel)
+		for channel, value := range c.channels {
+			if value {
+				fmt.Fprintf(v, "%v\n", channel)
+			}
 		}
 		return nil
 	})
@@ -206,7 +248,6 @@ func parseMessage(msg string) (*Message, error) {
 
 	if (strings.HasPrefix(split[0], ":")) {
 		parsed.Source = strings.Split(split[0][1:], "!")[0]
-		//parsed.Source = split[0][1:]
 		split = split[1:]
 	}
 
@@ -241,6 +282,9 @@ func writeToView(c *Client, msg *Message) error{
 		view = msg.Source
 	} else {
 		view = msg.Parameters[0]
+		if view == "*" {
+			view = msg.Source
+		}
 	}
 	if !c.isChannel(view) {
 		err := c.addChannel(view)
@@ -253,7 +297,7 @@ func writeToView(c *Client, msg *Message) error{
 		if err != nil {
 			return err
 		}
-		//fmt.Fprintf(v, "%v %v %v %v\n", msg.Tags, msg.Source, msg.Command, msg.Parameters)
+
 		fmt.Fprintf(v, "<%v> %v\n", msg.Source, strings.Join(msg.Parameters[1:], " "))
 		return nil
 	})

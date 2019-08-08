@@ -70,6 +70,14 @@ func (c *Client) setKeybindings() {
                 fmt.Println(err)
         }
 
+	if err := c.gui.SetKeybinding("channels", gocui.KeyBackspace, gocui.ModNone, c.deleteChannel); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := c.gui.SetKeybinding("channels", gocui.KeyBackspace2, gocui.ModNone, c.deleteChannel); err != nil {
+		fmt.Println(err)
+	}
+
         if err := c.gui.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, c.GetInput); err != nil {
                 fmt.Println(err)
         }
