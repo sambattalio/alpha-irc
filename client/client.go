@@ -20,6 +20,9 @@ type Client struct {
 
 	channel string
 	channels map[string]bool
+
+	history []string
+	histI int
 }
 
 
@@ -42,6 +45,8 @@ func NewClient(u User) *Client {
 		user: u,
 		gui: g,
 		channels: make(map[string]bool),
+		history: make([]string, 0),
+		histI: 0,
 	}
 	g.SetManager(&c)
 	c.setKeybindings()
@@ -65,6 +70,9 @@ func (c *Client) Connect() error {
 
 func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 	input := v.ViewBuffer()
+
+	c.history = append(c.history, input)
+	c.histI = 0
 
 	parsed, err := parseMessage(input);
 	if err != nil {
@@ -136,6 +144,51 @@ func (c *Client) setChannelView(_ *gocui.Gui, v *gocui.View) error {
 	}
 	c.reloadUsers()
         return nil
+}
+
+
+func (c *Client) upHistory(_ *gocui.Gui, v *gocui.View) error {
+	if !c.isHist() {
+		return nil
+	}
+	v, err := c.gui.View("input")
+	if err != nil {
+		return err
+	}
+	v.Clear()
+
+	if c.histI == 0 {
+		c.histI = len(c.history) - 1
+	} else {
+		c.histI--
+	}
+
+	fmt.Fprintf(v, c.history[c.histI])
+	return nil
+}
+
+func (c *Client) downHistory(_ *gocui.Gui, v *gocui.View) error {
+	if !c.isHist() {
+		return nil
+	}
+	v, err := c.gui.View("input")
+	if err != nil {
+		return err
+	}
+	v.Clear()
+
+	if c.histI == 0 || c.histI == len(c.history) - 1 {
+		c.histI = len(c.history) - 1
+	} else {
+		c.histI++
+	}
+
+	fmt.Fprintf(v, c.history[c.histI])
+	return nil
+}
+
+func (c *Client) isHist() bool {
+	return len(c.history) > 0
 }
 
 func lineOfText(v *gocui.View) (string, error) {
@@ -277,23 +330,14 @@ func handleMsg(c *Client, msg string) error {
 }
 
 func writeToView(c *Client, msg *Message) error{
-	var view string
-	if msg.Parameters[0] == c.user.Nick {
-		view = msg.Source
-	} else {
-		view = msg.Parameters[0]
-		if view == "*" {
-			view = msg.Source
-		}
-	}
-	if !c.isChannel(view) {
-		err := c.addChannel(view)
+	if !c.isChannel(msg.Source) {
+		err := c.addChannel(msg.Source)
 		if err != nil {
 			return err
 		}
 	}
 	c.gui.Update(func(g *gocui.Gui) error {
-		v, err := g.View(view)
+		v, err := g.View(msg.Source)
 		if err != nil {
 			return err
 		}

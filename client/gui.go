@@ -81,6 +81,14 @@ func (c *Client) setKeybindings() {
         if err := c.gui.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, c.GetInput); err != nil {
                 fmt.Println(err)
         }
+
+	if err := c.gui.SetKeybinding("input", gocui.KeyArrowUp, gocui.ModNone, c.upHistory); err != nil {
+		fmt.Println(err)
+	}
+
+	if err := c.gui.SetKeybinding("input", gocui.KeyArrowDown, gocui.ModNone, c.downHistory); err != nil {
+		fmt.Println(err)
+	}
 }
 
 func (c *Client) startGui() error {
