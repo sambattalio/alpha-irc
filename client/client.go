@@ -315,19 +315,28 @@ func handleMsg(c *Client, msg string) error {
 }
 
 func writeToView(c *Client, msg *Message) error{
-	if !c.isChannel(msg.Source) {
-		err := c.addChannel(msg.Source)
+	var view string
+	if (msg.Parameters[0] == c.user.Nick) {
+		view = msg.Source
+	} else {
+		view = msg.Parameters[0]
+		if view == "*" {
+			view = msg.Source
+		}
+	}
+
+	if !c.isChannel(view) {
+		err := c.addChannel(view)
 		if err != nil {
 			return err
 		}
 	}
-
-	if (!strings.HasPrefix(msg.Source, "#") || strings.Contains(strings.Join(msg.Parameters[1:], " "), c.user.Nick)) {
+	/*if (!strings.HasPrefix(msg.Source, "#") || strings.Contains(strings.Join(msg.Parameters[1:], " "), c.user.Nick)) {
 		fmt.Print("\a")
-	}
+	}*/
 
 	c.gui.Update(func(g *gocui.Gui) error {
-		v, err := g.View(msg.Source)
+		v, err := g.View(view)
 		if err != nil {
 			return err
 		}
