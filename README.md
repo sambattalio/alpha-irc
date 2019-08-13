@@ -1,16 +1,22 @@
 # Alpha-irc
 Making an irc client to learn Golang more
 
+# Screenshot
+
+![Screenshot](alphaircss.png)
+
+
 # Status
 
 Can connect to freenode and send IRC messages using protocol spec
 
-
 Keys
 
-- `Tab` to switch view to channel list
+- `Escape` to switch view to channel list
 - `Backspace` to delete channel
+- `Tab` to autocomplete name to user in channel
 - `Enter` to join channel
+
 
 # TODO List
 
@@ -20,7 +26,6 @@ Keys
   - [X] Send "raw" irc messages (PRIVMSG nick :message)
   - [x] join channel and talk there
   - [x] clean up input
-  - [ ] use regex instead of .Fields
 - [ ] Channels
   - [ ] leave channel
   - [ ] channel motd
@@ -33,4 +38,5 @@ Keys
   - [X] Add basic setup for input message
   - [X] Get better structure with channel list and members
   - [ ] clean up
+- [ ] Config yaml
 - [ ] Get a good repo structure in place
