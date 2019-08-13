@@ -54,7 +54,7 @@ func (c *Client) setKeybindings() {
                 fmt.Println(err)
         }
 
-        if err := c.gui.SetKeybinding("", gocui.KeyTab, gocui.ModNone, switchView); err != nil {
+        if err := c.gui.SetKeybinding("", gocui.KeyEsc, gocui.ModNone, switchView); err != nil {
                 fmt.Println(err)
         }
 
@@ -82,13 +82,9 @@ func (c *Client) setKeybindings() {
                 fmt.Println(err)
         }
 
-	if err := c.gui.SetKeybinding("input", gocui.KeyArrowUp, gocui.ModNone, c.upHistory); err != nil {
-		fmt.Println(err)
-	}
-
-	if err := c.gui.SetKeybinding("input", gocui.KeyArrowDown, gocui.ModNone, c.downHistory); err != nil {
-		fmt.Println(err)
-	}
+	 if err := c.gui.SetKeybinding("input", gocui.KeyTab, gocui.ModNone, c.autoFill); err != nil {
+                fmt.Println(err)
+        }
 }
 
 func (c *Client) startGui() error {
@@ -131,4 +127,3 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 	g.Close()
         return gocui.ErrQuit
 }
-

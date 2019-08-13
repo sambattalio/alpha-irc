@@ -3,11 +3,13 @@ package client
 import (
 	"fmt"
 	"strings"
+	"unicode"
 	"errors"
 	"net"
 	"bufio"
 	"github.com/awesome-gocui/gocui"
 )
+
 
 type User struct {
 	Server, Nick, User, Name string
@@ -21,11 +23,8 @@ type Client struct {
 	channel string
 	channels map[string]bool
 
-	history []string
-	histI int
+	users []string
 }
-
-
 
 type Message struct {
 	Tags       []string
@@ -45,8 +44,7 @@ func NewClient(u User) *Client {
 		user: u,
 		gui: g,
 		channels: make(map[string]bool),
-		history: make([]string, 0),
-		histI: 0,
+		users: make([]string, 0),
 	}
 	g.SetManager(&c)
 	c.setKeybindings()
@@ -64,19 +62,18 @@ func (c *Client) Connect() error {
 
 	fmt.Fprintf(c.conn, "NICK %v\r\n", c.user.Nick)
 	fmt.Fprintf(c.conn, "USER %v - * :%v\r\n", c.user.User, c.user.Name)
+
 	c.startGui()
+
 	return nil
 }
 
 func (c *Client) GetInput(_ *gocui.Gui, v *gocui.View) error {
 	input := v.ViewBuffer()
 
-	c.history = append(c.history, input)
-	c.histI = 0
-
 	parsed, err := parseMessage(input);
 	if err != nil {
-		// just return nil if garbage input
+		// Garbage input don't crash just _gracefully_ handle
 		return nil
 	}
 
@@ -146,49 +143,36 @@ func (c *Client) setChannelView(_ *gocui.Gui, v *gocui.View) error {
         return nil
 }
 
-
-func (c *Client) upHistory(_ *gocui.Gui, v *gocui.View) error {
-	if !c.isHist() {
-		return nil
-	}
+func (c *Client) autoFill(_ *gocui.Gui, v *gocui.View) error {
+	// Try to fill with users if existi
 	v, err := c.gui.View("input")
 	if err != nil {
 		return err
 	}
-	v.Clear()
 
-	if c.histI == 0 {
-		c.histI = len(c.history) - 1
-	} else {
-		c.histI--
-	}
-
-	fmt.Fprintf(v, c.history[c.histI])
-	return nil
-}
-
-func (c *Client) downHistory(_ *gocui.Gui, v *gocui.View) error {
-	if !c.isHist() {
+	_, curY := v.Cursor()
+	input := v.ViewBuffer()
+	words := strings.Fields(input)
+	if len(words) == 0 {
 		return nil
 	}
-	v, err := c.gui.View("input")
-	if err != nil {
-		return err
-	}
-	v.Clear()
+	substring := words[len(words) - 1]
 
-	if c.histI == 0 || c.histI == len(c.history) - 1 {
-		c.histI = len(c.history) - 1
-	} else {
-		c.histI++
+	for _, name := range c.users {
+		name = strings.TrimLeftFunc(name, func(r rune) bool {
+			return !unicode.IsLetter(r) && !unicode.IsNumber(r)
+		})
+
+		if strings.HasPrefix(name, substring) {
+			toWrite := strings.Split(name, substring)[1]
+			v.Clear()
+			fmt.Fprintf(v, "%s%s", input, toWrite)
+			v.SetCursor(len(input) + len(toWrite), curY)
+			break
+		}
 	}
 
-	fmt.Fprintf(v, c.history[c.histI])
 	return nil
-}
-
-func (c *Client) isHist() bool {
-	return len(c.history) > 0
 }
 
 func lineOfText(v *gocui.View) (string, error) {
@@ -212,8 +196,8 @@ func (c *Client) resetUsersTab() error {
 }
 
 func (c *Client) isChannel(name string) bool {
-	_, ok := c.channels[name]
-	return ok
+	val, ok := c.channels[name]
+	return ok && val
 }
 
 func (c *Client) addChannel(name string) error {
@@ -269,7 +253,7 @@ func (c *Client) readLoop() {
 			break
 		}
 
-		parsed, err := parseMessage(msg);
+		parsed, err := parseMessage(msg)
 		if err != nil {
 			fmt.Println(err)
 			break
@@ -282,6 +266,7 @@ func (c *Client) readLoop() {
 }
 
 func parseMessage(msg string) (*Message, error) {
+	// imagine using regex
 	if (len(msg) == 0) {
 		return &Message{}, errors.New("String Length 0!")
 	}
@@ -310,7 +295,7 @@ func parseMessage(msg string) (*Message, error) {
 	for i, item := range split {
 		if (strings.HasPrefix(item, ":")) {
 			parsed.Parameters = append(parsed.Parameters,
-				            strings.Join(split[i:], " ")[1:])
+					   strings.Join(split[i:], " ")[1:])
 			break
 		}
 		parsed.Parameters = append(parsed.Parameters, item)
@@ -320,7 +305,7 @@ func parseMessage(msg string) (*Message, error) {
 }
 
 func parseTags(s string) ([]string, error) {
-	// TODO
+	// not super needed... yet
 	return make([]string, 0), nil
 }
 
@@ -336,6 +321,11 @@ func writeToView(c *Client, msg *Message) error{
 			return err
 		}
 	}
+
+	if (!strings.HasPrefix(msg.Source, "#") || strings.Contains(strings.Join(msg.Parameters[1:], " "), c.user.Nick)) {
+		fmt.Print("\a")
+	}
+
 	c.gui.Update(func(g *gocui.Gui) error {
 		v, err := g.View(msg.Source)
 		if err != nil {
@@ -349,8 +339,14 @@ func writeToView(c *Client, msg *Message) error{
 	return nil
 }
 
+func updateGuiFunc(gui *gocui.Gui, updater func(g *gocui.Gui) error) {
+	gui.Update(func(g *gocui.Gui) error {
+		return updater(g)
+	})
+}
+
 func (c *Client) writeInputToScreen(msg string) {
-	c.gui.Update(func(g *gocui.Gui) error {
+	updateGuiFunc(c.gui, func(g *gocui.Gui) error {
 		v, err := g.View(c.channel)
 		if err != nil {
 			return err
